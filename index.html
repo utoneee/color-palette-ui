@@ -365,6 +365,17 @@ function buildSliders(hex){
       applyColorFromEditor(h);
     });
   });
+  sliders.forEach((sl,i)=>{
+    sl.addEventListener('wheel',(e)=>{
+      e.preventDefault();
+      const delta=e.deltaY<0?1:-1;
+      const newVal=Math.max(0,Math.min(parseInt(sl.max),parseInt(sl.value)+delta));
+      sl.value=newVal;numInputs[i].value=newVal;
+      const v=sliders.map(s=>parseInt(s.value));
+      const h=sliderMode==='rgb'?rgbToHex(...v):(()=>{const r=cmykToRgb(...v);return rgbToHex(r.r,r.g,r.b)})();
+      document.getElementById('hex-in').value=h;applyColorFromEditor(h);
+    },{passive:false});
+  });
   numInputs.forEach((inp,i)=>{
     inp.addEventListener('change',()=>{
       const val=parseInt(inp.value);
@@ -430,7 +441,7 @@ function getBtnC(pre,state){
 }
 
 function renderPreview(){
-  const c=C;
+  const c=new Proxy(C,{get:(t,k)=>disabledKeys.has(k)?'transparent':t[k]});
   const isInter=previewMode==='interactive';
   const b1n=getBtnC('btn1','normal'),b1h=getBtnC('btn1','hover'),b1p=getBtnC('btn1','pressed');
   const b2n=getBtnC('btn2','normal'),b2h=getBtnC('btn2','hover'),b2p=getBtnC('btn2','pressed');
@@ -493,7 +504,7 @@ function toggleKey(k,el){
   if(disabledKeys.has(k))disabledKeys.delete(k);else disabledKeys.add(k);
   const row=el.closest('.c-row,.base-row');
   if(row)row.querySelector('.row-swatch').classList.toggle('crossed',disabledKeys.has(k));
-  updateExport();
+  renderPreview();updateExport();
 }
 function toggleCardExp(){cardExp=!cardExp;renderColorList();}
 function toggleInpExp(){inpExp=!inpExp;renderColorList();}
