@@ -45,8 +45,10 @@ body{background:var(--app-bg);font-family:var(--font-sans);font-size:13px;color:
 .chk-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:0.5px solid var(--pbd);cursor:pointer;color:#ccc}
 .chk-row:last-child{border-bottom:none}
 .chk-row input[type=checkbox]{accent-color:#aaa}
-.color-group{margin-bottom:9px}
-#color-list{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px}
+.color-group{margin-bottom:32px}
+#color-list{display:flex;gap:60px}
+.cl-col{flex:1;min-width:0}
+.row-hex{width:70px}
 .color-group.full-width{grid-column:1/-1}
 .g-title{font-size:10px;color:var(--lc);margin-bottom:5px;padding-bottom:3px;border-bottom:0.5px solid var(--pbd)}
 .c-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:3px 5px;border-radius:5px;cursor:pointer}
@@ -103,6 +105,10 @@ body{background:var(--app-bg);font-family:var(--font-sans);font-size:13px;color:
 .sl-toggle input:checked~.sl-knob{left:12px;background:#fff}
 .row-swatch{position:relative;overflow:hidden}
 .row-swatch.crossed::after{content:'';position:absolute;inset:0;background:linear-gradient(to top right,transparent calc(50% - 1px),#999 calc(50% - 1px),#999 calc(50% + 1px),transparent calc(50% + 1px))}
+.grp-toggle{width:24px;height:14px;border-radius:7px;background:#444;position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s}
+.grp-toggle.on{background:#6868a8}
+.grp-toggle::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#bbb;transition:left 0.2s,background 0.2s}
+.grp-toggle.on::after{left:12px;background:#fff}
 </style>
 </head>
 <body>
@@ -175,7 +181,7 @@ body{background:var(--app-bg);font-family:var(--font-sans);font-size:13px;color:
   </div>
 </div>
 
-<div class="panel area-e" style="overflow-y:auto;scrollbar-color:#555 transparent;scrollbar-width:thin">
+<div class="panel area-e" style="overflow-y:auto;scrollbar-color:#555 transparent;scrollbar-width:thin;scrollbar-gutter:stable">
   <div class="slabel">配色細項</div>
   <div id="color-list"></div>
 </div>
@@ -269,6 +275,8 @@ let activeSlot=0;
 let opts={input:true,btn2:true};
 let btnExp1={N:false,H:false,P:false};
 let btnExp2={N:false,H:false,P:false};
+let btnGroupExp1=true;
+let btnGroupExp2=true;
 let copyTimer=null;
 let cardExp=true;
 let inpExp=true;
@@ -435,16 +443,16 @@ function toggleOpt(k){
   renderPreview();renderColorList();
 }
 
-function getBtnC(pre,state){
+function getBtnC(pre,state,colors=C){
   const s=state==='hover'?'H':state==='pressed'?'P':'N';
-  return{bg:C[pre+s+'Bg'],bd:C[pre+s+'Bd'],tx:C[pre+s+'Tx']};
+  return{bg:colors[pre+s+'Bg'],bd:colors[pre+s+'Bd'],tx:colors[pre+s+'Tx']};
 }
 
 function renderPreview(){
   const c=new Proxy(C,{get:(t,k)=>disabledKeys.has(k)?'transparent':t[k]});
   const isInter=previewMode==='interactive';
-  const b1n=getBtnC('btn1','normal'),b1h=getBtnC('btn1','hover'),b1p=getBtnC('btn1','pressed');
-  const b2n=getBtnC('btn2','normal'),b2h=getBtnC('btn2','hover'),b2p=getBtnC('btn2','pressed');
+  const b1n=getBtnC('btn1','normal',c),b1h=getBtnC('btn1','hover',c),b1p=getBtnC('btn1','pressed',c);
+  const b2n=getBtnC('btn2','normal',c),b2h=getBtnC('btn2','hover',c),b2p=getBtnC('btn2','pressed',c);
   let btns1='',btns2='';
   if(isInter){
     btns1=`<button class="mock-btn" id="mb1" style="background:${b1n.bg};border-color:${b1n.bd};color:${b1n.tx}" onmouseenter="hB('mb1','btn1','hover')" onmouseleave="hB('mb1','btn1','normal')" onmousedown="hB('mb1','btn1','pressed')" onmouseup="hB('mb1','btn1','normal')">主要按鈕</button>`;
@@ -500,6 +508,11 @@ function hB(id,pre,state){
   btn.style.background=s.bg;btn.style.borderColor=s.bd;btn.style.color=s.tx;
 }
 
+function toggleGroup(keys){
+  const allOn=keys.every(k=>!disabledKeys.has(k));
+  keys.forEach(k=>{if(allOn)disabledKeys.add(k);else disabledKeys.delete(k);});
+  renderColorList();renderPreview();updateExport();
+}
 function toggleKey(k,el){
   if(disabledKeys.has(k))disabledKeys.delete(k);else disabledKeys.add(k);
   const row=el.closest('.c-row,.base-row');
@@ -508,6 +521,8 @@ function toggleKey(k,el){
 }
 function toggleCardExp(){cardExp=!cardExp;renderColorList();}
 function toggleInpExp(){inpExp=!inpExp;renderColorList();}
+function toggleBtnGroupExp1(){btnGroupExp1=!btnGroupExp1;renderColorList();}
+function toggleBtnGroupExp2(){btnGroupExp2=!btnGroupExp2;renderColorList();}
 
 function renderColorList(){
   const el=document.getElementById('color-list');
@@ -523,10 +538,16 @@ function renderColorList(){
       onchange="rowEdit('${k}',this.value)">
   </div>`;
 
-  const mkFixed=(title,keys)=>`<div class="color-group">
-    <div class="g-title">${title}</div>
-    ${keys.map(k=>mkRow(k)).join('')}
-  </div>`;
+  const mkFixed=(title,keys)=>{
+    const allOn=keys.every(k=>!disabledKeys.has(k));
+    return`<div class="color-group">
+      <div style="display:flex;align-items:center;gap:6px;padding-bottom:3px;border-bottom:0.5px solid var(--pbd);margin-bottom:5px">
+        <div class="grp-toggle ${allOn?'on':''}" onclick='toggleGroup(${JSON.stringify(keys)})'></div>
+        <span style="font-size:10px;font-weight:500;color:var(--lc);text-transform:uppercase;letter-spacing:0.07em">${title}</span>
+      </div>
+      ${keys.map(k=>mkRow(k)).join('')}
+    </div>`;
+  };
 
   const mkCollapsible=(title,keys,exp,fn)=>`<div class="color-group">
     <div class="btn-group-header" onclick="${fn}()">
@@ -540,11 +561,17 @@ function renderColorList(){
 
   const mkBtnGroup=g=>{
     const states=[{s:'N',label:'Normal'},{s:'H',label:'Hover'},{s:'P',label:'Pressed'}];
+    const btnAllKeys=['N','H','P'].flatMap(s=>['Bg','Bd','Tx'].map(t=>g.pre+s+t));
+    const grpAllOn=btnAllKeys.every(k=>!disabledKeys.has(k));
     return`<div class="color-group">
-      <div class="g-title">${g.title}</div>
+      <div class="btn-group-header" onclick="${g.toggleFn}()">
+        <span class="g-title" style="border-bottom:none;margin-bottom:0;padding-bottom:0">${g.title}</span>
+        <span class="expand-arrow ${g.groupExp?'open':''}">▾</span>
+      </div>
+      <div class="btn-detail ${g.groupExp?'open':''}">
       <div class="base-row" data-key="${g.baseKey}" onclick="setActiveKey('${g.baseKey}')">
-        ${mkToggle(g.baseKey)}
-        <div class="row-swatch ${disabledKeys.has(g.baseKey)?'crossed':''}" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[g.baseKey]}"></div>
+        <div class="grp-toggle ${grpAllOn?'on':''}" onclick='event.stopPropagation();toggleGroup(${JSON.stringify(btnAllKeys)})'></div>
+        <div class="row-swatch" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[g.baseKey]}"></div>
         <span class="c-lbl">整組基底色</span>
         <input class="hex-in row-hex" value="${C[g.baseKey]}" maxlength="9"
           onclick="event.stopPropagation()"
@@ -577,18 +604,15 @@ function renderColorList(){
           </div>
         </div>`;
       }).join('')}
+      </div>
     </div>`;
   };
 
   const mkPlaceholder=title=>`<div class="color-group"><div class="g-title" style="opacity:0.3">${title}</div></div>`;
-  el.innerHTML=[
-    mkFixed('視窗',['appBg','appText','titlebarBg','titlebarText']),
-    mkCollapsible('文字卡片',['csCardBg','csCardBd','csCardTx'],cardExp,'toggleCardExp'),
-    mkBtnGroup({title:'按鈕 1',pre:'btn1',baseKey:'b1Base',exp:btnExp1}),
-    mkFixed('卡片',['globalText','surfaceBg','surfaceBorder']),
-    opts.input?mkCollapsible('輸入框',['inpBg','inpBd','inpTx'],inpExp,'toggleInpExp'):mkPlaceholder('輸入框'),
-    opts.btn2?mkBtnGroup({title:'按鈕 2',pre:'btn2',baseKey:'b2Base',exp:btnExp2}):mkPlaceholder('按鈕 2'),
-  ].join('');
+  el.innerHTML=
+    `<div class="cl-col">${mkFixed('視窗',['appBg','appText','titlebarBg','titlebarText'])}${mkFixed('卡片',['globalText','surfaceBg','surfaceBorder'])}</div>`+
+    `<div class="cl-col">${mkFixed('文字卡片',['csCardBg','csCardBd','csCardTx'])}${opts.input?mkFixed('輸入框',['inpBg','inpBd','inpTx']):mkPlaceholder('輸入框')}</div>`+
+    `<div class="cl-col">${mkBtnGroup({title:'按鈕 1',pre:'btn1',baseKey:'b1Base',exp:btnExp1,groupExp:btnGroupExp1,toggleFn:'toggleBtnGroupExp1'})}${opts.btn2?mkBtnGroup({title:'按鈕 2',pre:'btn2',baseKey:'b2Base',exp:btnExp2,groupExp:btnGroupExp2,toggleFn:'toggleBtnGroupExp2'}):mkPlaceholder('按鈕 2')}</div>`;
 
   refreshRowHighlight();
 }
