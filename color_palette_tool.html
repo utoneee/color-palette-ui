@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APP 調色板工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+:root{
+  --app-bg:#2a2a2a;--pb:#383838;--pbd:#4a4a4a;--lc:#aaa;
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --font-mono:'Menlo','Consolas','Monaco',monospace;
+}
+body{background:var(--app-bg);font-family:var(--font-sans);font-size:13px;color:#ddd;scrollbar-color:#555 transparent;scrollbar-width:thin;display:flex;flex-direction:column}
+.app{display:grid;grid-template-columns:7fr 3fr;grid-template-rows:auto auto 1fr auto;gap:10px;padding:12px;flex:1;min-height:0;overflow:hidden}
+.panel{background:var(--pb);border:0.5px solid var(--pbd);border-radius:10px;padding:12px}
+.slabel{font-size:10px;font-weight:500;color:var(--lc);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px}
+.area-a{grid-column:1;grid-row:1/3}
+.area-b{grid-column:2;grid-row:1}
+.area-c{grid-column:2;grid-row:2}
+.area-d{grid-column:2;grid-row:3}
+.area-e{grid-column:1;grid-row:3/5}
+.area-exp{grid-column:2;grid-row:4}
+.hex-in{font-size:12px;padding:4px 7px;border:0.5px solid var(--pbd);border-radius:6px;background:#2a2a2a;color:#eee;font-family:var(--font-mono);width:88px}
+.hex-in:focus{outline:none;border-color:#888}
+.tab{padding:3px 14px;font-size:11px;border:0.5px solid var(--pbd);border-radius:5px;background:transparent;color:var(--lc);cursor:pointer}
+.tab.on{background:#555;color:#fff;border-color:#666}
+.sl-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.sl-lbl{font-size:11px;width:14px;text-align:center;font-weight:500}
+.sl-val{font-size:11px;font-family:var(--font-mono);width:28px;text-align:right;color:var(--lc)}
+.sl-row input[type=range]{flex:1;accent-color:#888}
+.btn-sm{padding:4px 14px;font-size:11px;border:0.5px solid var(--pbd);border-radius:5px;background:transparent;color:#ccc;cursor:pointer}
+.btn-sm:hover{background:#444}
+.btn-save-swatch{padding:6px 12px;font-size:12px;border:0.5px solid #777;border-radius:6px;background:#4a4a4a;color:#eee;cursor:pointer;width:100%;font-weight:500}
+.btn-save-swatch:hover{background:#555}
+.sw-strip{display:flex;flex-wrap:wrap;gap:4px;min-height:20px;margin-bottom:7px}
+.sw-item{width:22px;height:22px;border-radius:4px;border:0.5px solid #555;cursor:pointer}
+.sw-item:hover{outline:1.5px solid #aaa;outline-offset:1px}
+.imp-ta{width:100%;height:46px;font-size:11px;padding:5px 7px;border:0.5px solid var(--pbd);border-radius:5px;background:#2a2a2a;color:#ddd;font-family:var(--font-mono);resize:none;margin-bottom:5px}
+.imp-ta:focus{outline:none;border-color:#888}
+.chk-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:0.5px solid var(--pbd);cursor:pointer;color:#ccc}
+.chk-row:last-child{border-bottom:none}
+.chk-row input[type=checkbox]{accent-color:#aaa}
+.color-group{margin-bottom:9px}
+#color-list{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px}
+.color-group.full-width{grid-column:1/-1}
+.g-title{font-size:10px;color:var(--lc);margin-bottom:5px;padding-bottom:3px;border-bottom:0.5px solid var(--pbd)}
+.c-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;padding:3px 5px;border-radius:5px;cursor:pointer}
+.c-row:hover{background:#444}
+.c-row.active-row{background:#4a4a4a;outline:1px solid #666}
+.c-lbl{font-size:11px;color:#bbb;flex:1;min-width:0;pointer-events:none}
+.slots-row{display:flex;gap:6px;margin-bottom:5px}
+.slots-row:last-child{margin-bottom:0}
+.st{flex:1;border-radius:6px;overflow:hidden;border:1.5px solid transparent;cursor:pointer;transition:border-color 0.15s}
+.st.sel{border-color:#fff}
+.st-mini{height:56px;display:flex;flex-direction:column}
+.st-bar{height:13px}
+.st-text-band{height:5px}
+.st-body{flex:1;display:flex;gap:3px;align-items:center;padding:3px 5px}
+.st-btn-mini{height:10px;width:18px;border-radius:2px}
+.st-strip-mini{height:8px;flex:1;border-radius:2px}
+.st-lbl{font-size:9px;color:var(--lc);text-align:center;padding:2px 0;background:var(--pb)}
+.mock-window{border-radius:8px;overflow:hidden;border-width:2px;border-style:solid}
+.mock-tb{padding:7px 12px;display:flex;align-items:center}
+.mock-tb-txt{font-size:12px;font-weight:500}
+.mock-body{padding:12px;display:flex;flex-direction:column;gap:18px}
+.mock-tr{display:flex;align-items:center;gap:8px}
+.mock-blk{height:8px;border-radius:3px;flex:1;opacity:0.85}
+.mock-blk.sm{flex:0.5;opacity:0.5}
+.mock-btn{padding:5px 13px;border-radius:6px;font-size:12px;border-width:1.5px;border-style:solid;cursor:pointer;transition:background 0.1s,color 0.1s,border-color 0.1s;white-space:nowrap}
+.mock-cs{border-radius:6px;padding:7px 10px;border-width:1px;border-style:solid}
+.mock-cs-t{height:6px;border-radius:2px;margin-bottom:4px}
+.mock-cs-t.s{width:55%}
+.mock-inp-wrap{border-radius:5px;padding:5px 9px;font-size:12px;border-width:1px;border-style:solid;width:100%}
+.state-tog{display:flex;gap:3px}
+.st-btn{padding:3px 13px;font-size:11px;border:0.5px solid var(--pbd);border-radius:5px;background:transparent;color:var(--lc);cursor:pointer}
+.st-btn.on{background:#555;color:#fff}
+.btn-group-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 5px;border-radius:5px}
+.btn-group-header:hover{background:#444}
+.expand-arrow{font-size:20px;color:var(--lc);transition:transform 0.2s;line-height:1}
+.expand-arrow.open{transform:rotate(180deg)}
+.btn-detail{display:none}
+.btn-detail.open{display:block}
+.base-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:3px 5px;border-radius:5px;cursor:pointer}
+.base-row:hover{background:#444}
+.base-row.active-row{background:#4a4a4a;outline:1px solid #666}
+.export-ta{width:100%;height:120px;font-size:11px;padding:7px 9px;border:0.5px solid var(--pbd);border-radius:6px;background:#222;color:#b8e0b8;font-family:var(--font-mono);resize:none;line-height:1.6;display:none}
+.export-ta.open{display:block}
+.exp-copy-badge{font-size:11px;color:#7dd;padding:2px 8px;border-radius:4px;background:#2a4a3a;display:none}
+.exp-copy-badge.show{display:inline-block}
+.app-header{padding:12px 14px 0;display:flex;align-items:center;gap:8px}
+.app-title{font-size:14px;font-weight:600;color:#e8e8e8;letter-spacing:0.03em}
+.app-subtitle{font-size:11px;color:var(--lc)}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <span class="app-title">APP 調色板工具</span>
+  <span class="app-subtitle">/ Color Palette UI</span>
+</div>
+
+<div class="app">
+
+<div class="panel area-a" style="display:flex;flex-direction:column;gap:10px">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div class="slabel" style="margin-bottom:0">預覽</div>
+    <div class="state-tog" id="preview-mode-tog">
+      <button class="st-btn on" onclick="setPreviewMode('static')">靜態</button>
+      <button class="st-btn" onclick="setPreviewMode('interactive')">互動</button>
+    </div>
+  </div>
+  <div id="main-preview" style="flex:1;display:flex;align-items:center;justify-content:center;border-radius:8px;padding:24px;overflow:hidden"></div>
+</div>
+
+<div class="panel area-b">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div class="slabel" style="margin-bottom:0">暫存配色組</div>
+    <div style="display:flex;gap:5px">
+      <button class="btn-sm" id="slots-toggle-btn" onclick="toggleSlots()">展開</button>
+      <button class="btn-sm" onclick="saveToSlot()">儲存</button>
+      <button class="btn-sm" onclick="loadFromSlot()">套用</button>
+    </div>
+  </div>
+  <div id="store-thumbs"></div>
+</div>
+
+<div class="panel area-c">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+    <div class="slabel" style="margin-bottom:0">色票暫存</div>
+    <button class="btn-sm" onclick="clearSwatches()">清除</button>
+  </div>
+  <div class="sw-strip" id="sw-strip"></div>
+  <textarea class="imp-ta" id="imp-ta" placeholder="#FF0000, #00FF00&#10;或每行一個"></textarea>
+  <button class="btn-sm" onclick="importSwatches()" style="width:100%">批次匯入</button>
+</div>
+
+<div class="panel area-d" style="display:flex;flex-direction:column;gap:10px">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div class="slabel" style="margin-bottom:0">調色</div>
+    <div style="display:flex;gap:3px">
+      <button class="tab" id="tab-rgb" onclick="switchSliderMode('rgb')">RGB</button>
+      <button class="tab on" id="tab-cmyk" onclick="switchSliderMode('cmyk')">CMYK</button>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div id="ed-preview" style="width:32px;height:32px;border-radius:7px;border:0.5px solid #555;flex-shrink:0;background:#4A90D9"></div>
+    <input class="hex-in" id="hex-in" placeholder="#FFFFFF" maxlength="9" style="flex:1;width:auto">
+    <div id="ed-label" style="font-size:11px;color:var(--lc);flex:1;text-align:right;overflow:hidden;white-space:nowrap">—</div>
+  </div>
+  <div id="slider-panel"></div>
+  <button class="btn-save-swatch" onclick="saveSwatch()">+ 儲存到色票</button>
+  <div style="border-top:0.5px solid var(--pbd);padding-top:10px">
+    <div class="slabel" style="margin-bottom:6px">選填項目</div>
+    <div class="chk-row" onclick="toggleOpt('input')">
+      <input type="checkbox" id="chk-input" checked onchange="toggleOpt('input')" onclick="event.stopPropagation()">
+      <span style="font-size:12px">輸入框</span>
+    </div>
+    <div class="chk-row" onclick="toggleOpt('btn2')">
+      <input type="checkbox" id="chk-btn2" checked onchange="toggleOpt('btn2')" onclick="event.stopPropagation()">
+      <span style="font-size:12px">按鈕 2</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel area-e" style="overflow-y:auto;scrollbar-color:#555 transparent;scrollbar-width:thin">
+  <div class="slabel">配色細項</div>
+  <div id="color-list"></div>
+</div>
+
+<div class="panel area-exp">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="slabel" style="margin-bottom:0">匯出預覽配色</div>
+      <span class="exp-copy-badge" id="copy-badge">已複製</span>
+    </div>
+    <div style="display:flex;gap:4px">
+      <button class="tab on" id="exp-css-btn" onclick="switchExport('css')">CSS</button>
+      <button class="tab" id="exp-json-btn" onclick="switchExport('json')">JSON</button>
+      <button class="btn-sm" onclick="copyExport()">複製</button>
+      <button class="btn-sm" id="exp-toggle-btn" onclick="toggleExport()">展開</button>
+    </div>
+  </div>
+  <textarea class="export-ta" id="export-ta" readonly></textarea>
+</div>
+
+</div>
+
+<script>
+const DEF={
+  appBg:'#888888',appText:'#FFFFFF',
+  titlebarBg:'#3A3A3A',titlebarText:'#FFFFFF',
+  globalText:'#222222',surfaceBg:'#FFFFFF',surfaceBorder:'#CCCCCC',
+  b1Base:'#4A90D9',
+  btn1NBg:'#4A90D9',btn1NBd:'#1E5FA0',btn1NTx:'#FFFFFF',
+  btn1HBg:'#6AAEE8',btn1HBd:'#4A90D9',btn1HTx:'#FFFFFF',
+  btn1PBg:'#1A4F8A',btn1PBd:'#0D3166',btn1PTx:'#FFFFFF',
+  b2Base:'#E05C2A',
+  btn2NBg:'#E05C2A',btn2NBd:'#9A3610',btn2NTx:'#FFFFFF',
+  btn2HBg:'#F07A50',btn2HBd:'#E05C2A',btn2HTx:'#FFFFFF',
+  btn2PBg:'#9A3610',btn2PBd:'#6A2005',btn2PTx:'#FFFFFF',
+  csCardBg:'#F5F5F5',csCardBd:'#CCCCCC',csCardTx:'#333333',
+  inpBg:'#FFFFFF',inpBd:'#BBBBBB',inpTx:'#222222'
+};
+const LABELS={
+  appBg:'APP 背景',appText:'背景上文字',
+  titlebarBg:'標題列背景',titlebarText:'標題列文字',
+  globalText:'全域文字',surfaceBg:'卡片背景',surfaceBorder:'卡片邊框',
+  b1Base:'整組基底色',
+  btn1NBg:'背景',btn1NBd:'邊框',btn1NTx:'文字',
+  btn1HBg:'背景',btn1HBd:'邊框',btn1HTx:'文字',
+  btn1PBg:'背景',btn1PBd:'邊框',btn1PTx:'文字',
+  b2Base:'整組基底色',
+  btn2NBg:'背景',btn2NBd:'邊框',btn2NTx:'文字',
+  btn2HBg:'背景',btn2HBd:'邊框',btn2HTx:'文字',
+  btn2PBg:'背景',btn2PBd:'邊框',btn2PTx:'文字',
+  csCardBg:'背景',csCardBd:'邊框',csCardTx:'文字',
+  inpBg:'背景',inpBd:'邊框',inpTx:'文字'
+};
+const CSS_NAMES={
+  appBg:'--color-app-bg',appText:'--color-app-text',
+  titlebarBg:'--color-titlebar-bg',titlebarText:'--color-titlebar-text',
+  globalText:'--color-on-surface',surfaceBg:'--color-surface',surfaceBorder:'--color-surface-border',
+  btn1NBg:'--color-btn-primary-bg',btn1NBd:'--color-btn-primary-border',btn1NTx:'--color-btn-primary-text',
+  btn1HBg:'--color-btn-primary-hover-bg',btn1HBd:'--color-btn-primary-hover-border',btn1HTx:'--color-btn-primary-hover-text',
+  btn1PBg:'--color-btn-primary-pressed-bg',btn1PBd:'--color-btn-primary-pressed-border',btn1PTx:'--color-btn-primary-pressed-text',
+  btn2NBg:'--color-btn-secondary-bg',btn2NBd:'--color-btn-secondary-border',btn2NTx:'--color-btn-secondary-text',
+  btn2HBg:'--color-btn-secondary-hover-bg',btn2HBd:'--color-btn-secondary-hover-border',btn2HTx:'--color-btn-secondary-hover-text',
+  btn2PBg:'--color-btn-secondary-pressed-bg',btn2PBd:'--color-btn-secondary-pressed-border',btn2PTx:'--color-btn-secondary-pressed-text',
+  csCardBg:'--color-card-bg',csCardBd:'--color-card-border',csCardTx:'--color-card-text',
+  inpBg:'--color-input-bg',inpBd:'--color-input-border',inpTx:'--color-input-text'
+};
+const JSON_NAMES={
+  appBg:'app.background',appText:'app.text',
+  titlebarBg:'titlebar.background',titlebarText:'titlebar.text',
+  globalText:'surface.onSurface',surfaceBg:'surface.background',surfaceBorder:'surface.border',
+  btn1NBg:'button.primary.background',btn1NBd:'button.primary.border',btn1NTx:'button.primary.text',
+  btn1HBg:'button.primary.hover.background',btn1HBd:'button.primary.hover.border',btn1HTx:'button.primary.hover.text',
+  btn1PBg:'button.primary.pressed.background',btn1PBd:'button.primary.pressed.border',btn1PTx:'button.primary.pressed.text',
+  btn2NBg:'button.secondary.background',btn2NBd:'button.secondary.border',btn2NTx:'button.secondary.text',
+  btn2HBg:'button.secondary.hover.background',btn2HBd:'button.secondary.hover.border',btn2HTx:'button.secondary.hover.text',
+  btn2PBg:'button.secondary.pressed.background',btn2PBd:'button.secondary.pressed.border',btn2PTx:'button.secondary.pressed.text',
+  csCardBg:'card.background',csCardBd:'card.border',csCardTx:'card.text',
+  inpBg:'input.background',inpBd:'input.border',inpTx:'input.text'
+};
+
+let C={...DEF};
+let swatches=[];
+let activeKey=null;
+let sliderMode='cmyk';
+let previewMode='static';
+let exportMode='css';
+let exportOpen=false;
+let slots=[null,null,null,null,null,null];
+let slotsExpanded=false;
+let activeSlot=0;
+let opts={input:true,btn2:true};
+let btnExp1={N:false,H:false,P:false};
+let btnExp2={N:false,H:false,P:false};
+let copyTimer=null;
+let cardExp=true;
+let inpExp=true;
+
+function hexToRgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return{r:(n>>16)&255,g:(n>>8)&255,b:n&255}}
+function rgbToHex(r,g,b){return'#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('').toUpperCase()}
+function rgbToCmyk(r,g,b){const r1=r/255,g1=g/255,b1=b/255,k=1-Math.max(r1,g1,b1);if(k===1)return{c:0,m:0,y:0,k:100};return{c:Math.round((1-r1-k)/(1-k)*100),m:Math.round((1-g1-k)/(1-k)*100),y:Math.round((1-b1-k)/(1-k)*100),k:Math.round(k*100)}}
+function cmykToRgb(c,m,y,k){const f=1-k/100;return{r:Math.round(255*(1-c/100)*f),g:Math.round(255*(1-m/100)*f),b:Math.round(255*(1-y/100)*f)}}
+function lighten(hex,amt){const{r,g,b}=hexToRgb(hex);return rgbToHex(Math.min(255,r+amt),Math.min(255,g+amt),Math.min(255,b+amt))}
+function darken(hex,amt){const{r,g,b}=hexToRgb(hex);return rgbToHex(Math.max(0,r-amt),Math.max(0,g-amt),Math.max(0,b-amt))}
+
+function applyBtnBase(pre,hex){
+  C[pre+'NBg']=hex;C[pre+'NBd']=darken(hex,50);
+  C[pre+'HBg']=lighten(hex,35);C[pre+'HBd']=hex;
+  C[pre+'PBg']=darken(hex,55);C[pre+'PBd']=darken(hex,90);
+}
+
+function parseHex(raw){
+  const v=(raw||'').replace(/\s/g,'');
+  const m=v.match(/#?([0-9A-Fa-f]{6})/);
+  return m?'#'+m[1].toUpperCase():null;
+}
+
+function setActiveKey(key){
+  activeKey=key;
+  document.getElementById('ed-label').textContent=LABELS[key]||key;
+  const hex=C[key];
+  document.getElementById('hex-in').value=hex;
+  document.getElementById('ed-preview').style.background=hex;
+  buildSliders(hex);
+  refreshRowHighlight();
+}
+
+function refreshRowHighlight(){
+  document.querySelectorAll('.c-row,.base-row').forEach(el=>{
+    el.classList.toggle('active-row',el.dataset.key===activeKey);
+  });
+}
+
+function applyColorFromEditor(hex){
+  if(!activeKey)return;
+  C[activeKey]=hex;
+  document.getElementById('ed-preview').style.background=hex;
+  if(activeKey==='b1Base'){applyBtnBase('btn1',hex);}
+  else if(activeKey==='b2Base'){applyBtnBase('btn2',hex);}
+  renderPreview();
+  syncRowSwatch(activeKey,hex);
+  updateExport();
+}
+
+function syncRowSwatch(key,hex){
+  const el=document.querySelector(`[data-key="${key}"] .row-swatch`);
+  if(el)el.style.background=hex;
+  const inp=document.querySelector(`[data-key="${key}"] .row-hex`);
+  if(inp&&document.activeElement!==inp)inp.value=hex;
+  if(key==='b1Base'||key==='btn1NBg'||key==='btn1HBg'||key==='btn1PBg'||
+     key==='b2Base'||key==='btn2NBg'||key==='btn2HBg'||key==='btn2PBg'){
+    const pre=key.startsWith('b1')||key.startsWith('btn1')?'btn1':'btn2';
+    ['N','H','P'].forEach(s=>{
+      ['Bg','Bd','Tx'].forEach(t=>{
+        const bk=pre+s+t;
+        const bel=document.querySelector(`[data-key="${bk}"] .row-swatch`);
+        const binp=document.querySelector(`[data-key="${bk}"] .row-hex`);
+        if(bel)bel.style.background=C[bk];
+        if(binp&&document.activeElement!==binp)binp.value=C[bk];
+      });
+      const bgKey=pre+s+'Bg';
+      const hdr=document.querySelector(`.btn-state-swatch[data-state-key="${bgKey}"]`);
+      if(hdr)hdr.style.background=C[bgKey];
+    });
+    const baseSw=document.querySelector(`[data-key="${pre==='btn1'?'b1Base':'b2Base'}"] .row-swatch`);
+    if(baseSw)baseSw.style.background=C[pre==='btn1'?'b1Base':'b2Base'];
+  }
+}
+
+function buildSliders(hex){
+  const rgb=hexToRgb(hex);
+  const p=document.getElementById('slider-panel');
+  if(sliderMode==='rgb'){
+    p.innerHTML=mkSl('R',rgb.r,255,'#ef4444')+mkSl('G',rgb.g,255,'#22c55e')+mkSl('B',rgb.b,255,'#3b82f6');
+  }else{
+    const k=rgbToCmyk(rgb.r,rgb.g,rgb.b);
+    p.innerHTML=mkSl('C',k.c,100,'#06b6d4')+mkSl('M',k.m,100,'#ec4899')+mkSl('Y',k.y,100,'#eab308')+mkSl('K',k.k,100,'#aaa');
+  }
+  p.querySelectorAll('input[type=range]').forEach((sl,i)=>{
+    sl.addEventListener('input',()=>{
+      const v=[...p.querySelectorAll('input[type=range]')].map(s=>parseInt(s.value));
+      p.querySelectorAll('.sl-val')[i].textContent=v[i];
+      const h=sliderMode==='rgb'?rgbToHex(...v):(()=>{const r=cmykToRgb(...v);return rgbToHex(r.r,r.g,r.b)})();
+      document.getElementById('hex-in').value=h;
+      applyColorFromEditor(h);
+    });
+  });
+}
+
+function mkSl(l,v,max,col){return`<div class="sl-row"><span class="sl-lbl" style="color:${col}">${l}</span><input type="range" min="0" max="${max}" value="${v}" step="1"><span class="sl-val">${v}</span></div>`}
+
+function switchSliderMode(m){
+  sliderMode=m;
+  document.getElementById('tab-rgb').classList.toggle('on',m==='rgb');
+  document.getElementById('tab-cmyk').classList.toggle('on',m==='cmyk');
+  if(activeKey)buildSliders(C[activeKey]);
+}
+
+document.getElementById('hex-in').addEventListener('input',function(){
+  const h=parseHex(this.value);
+  if(h){document.getElementById('ed-preview').style.background=h;applyColorFromEditor(h);buildSliders(h);}
+});
+
+function saveSwatch(){
+  if(!activeKey)return;
+  const h=C[activeKey];
+  if(!swatches.includes(h)){swatches.push(h);renderSwatches();}
+}
+function clearSwatches(){swatches=[];renderSwatches();}
+function importSwatches(){
+  const raw=document.getElementById('imp-ta').value;
+  const found=raw.match(/#?\s*[0-9A-Fa-f]{6}/g)||[];
+  found.forEach(m=>{const h=parseHex(m);if(h&&!swatches.includes(h))swatches.push(h);});
+  renderSwatches();document.getElementById('imp-ta').value='';
+}
+function renderSwatches(){
+  const el=document.getElementById('sw-strip');
+  el.innerHTML=swatches.length?swatches.map((s,i)=>`<div class="sw-item" style="background:${s}" title="${s}" onclick="clickSwatch(${i})" oncontextmenu="rmSwatch(event,${i})"></div>`).join(''):'<span style="font-size:11px;color:#666">尚無色票</span>';
+}
+function clickSwatch(i){if(activeKey){const h=swatches[i];C[activeKey]=h;document.getElementById('hex-in').value=h;document.getElementById('ed-preview').style.background=h;applyColorFromEditor(h);buildSliders(h);}}
+function rmSwatch(e,i){e.preventDefault();swatches.splice(i,1);renderSwatches();}
+
+function setPreviewMode(m){
+  previewMode=m;
+  document.querySelectorAll('#preview-mode-tog .st-btn').forEach(b=>b.classList.toggle('on',(m==='static'&&b.textContent==='靜態')||(m==='interactive'&&b.textContent==='互動')));
+  renderPreview();
+}
+
+function toggleOpt(k){
+  opts[k]=!opts[k];
+  document.getElementById('chk-'+k).checked=opts[k];
+  renderPreview();renderColorList();
+}
+
+function getBtnC(pre,state){
+  const s=state==='hover'?'H':state==='pressed'?'P':'N';
+  return{bg:C[pre+s+'Bg'],bd:C[pre+s+'Bd'],tx:C[pre+s+'Tx']};
+}
+
+function renderPreview(){
+  const c=C;
+  const isInter=previewMode==='interactive';
+  const b1n=getBtnC('btn1','normal'),b1h=getBtnC('btn1','hover'),b1p=getBtnC('btn1','pressed');
+  const b2n=getBtnC('btn2','normal'),b2h=getBtnC('btn2','hover'),b2p=getBtnC('btn2','pressed');
+  let btns1='',btns2='';
+  if(isInter){
+    btns1=`<button class="mock-btn" id="mb1" style="background:${b1n.bg};border-color:${b1n.bd};color:${b1n.tx}" onmouseenter="hB('mb1','btn1','hover')" onmouseleave="hB('mb1','btn1','normal')" onmousedown="hB('mb1','btn1','pressed')" onmouseup="hB('mb1','btn1','normal')">主要按鈕</button>`;
+    if(opts.btn2)btns2=`<button class="mock-btn" id="mb2" style="background:${b2n.bg};border-color:${b2n.bd};color:${b2n.tx}" onmouseenter="hB('mb2','btn2','hover')" onmouseleave="hB('mb2','btn2','normal')" onmousedown="hB('mb2','btn2','pressed')" onmouseup="hB('mb2','btn2','normal')">次要按鈕</button>`;
+  }else{
+    btns1=`<div style="display:flex;gap:6px;flex-wrap:nowrap">
+      <button class="mock-btn" style="background:${b1n.bg};border-color:${b1n.bd};color:${b1n.tx}">Normal</button>
+      <button class="mock-btn" style="background:${b1h.bg};border-color:${b1h.bd};color:${b1h.tx}">Hover</button>
+      <button class="mock-btn" style="background:${b1p.bg};border-color:${b1p.bd};color:${b1p.tx}">Pressed</button>
+    </div>`;
+    if(opts.btn2)btns2=`<div style="display:flex;gap:6px;flex-wrap:nowrap">
+      <button class="mock-btn" style="background:${b2n.bg};border-color:${b2n.bd};color:${b2n.tx}">Normal</button>
+      <button class="mock-btn" style="background:${b2h.bg};border-color:${b2h.bd};color:${b2h.tx}">Hover</button>
+      <button class="mock-btn" style="background:${b2p.bg};border-color:${b2p.bd};color:${b2p.tx}">Pressed</button>
+    </div>`;
+  }
+  const cardHtml=`<div class="mock-cs" style="background:${c.csCardBg};border-color:${c.csCardBd}">
+    <div class="mock-cs-t" style="background:${c.csCardTx};opacity:0.75"></div>
+    <div class="mock-cs-t s" style="background:${c.csCardTx};opacity:0.5"></div>
+  </div>`;
+  const inputHtml=opts.input?`<div class="mock-inp-wrap" style="background:${c.inpBg};border-color:${c.inpBd};color:${c.inpTx}">輸入框文字</div>`:'';
+  const el=document.getElementById('main-preview');
+  el.style.background=c.appBg;
+  el.innerHTML=`<div style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:12px;color:${c.appText};padding:0 4px;opacity:0.9">說明文字 · 設定頁面</div>
+    <div class="mock-window" style="border-color:${c.surfaceBorder};background:${c.surfaceBg}">
+      <div class="mock-tb" style="background:${c.titlebarBg}">
+        <span class="mock-tb-txt" style="color:${c.titlebarText}">頁面標題</span>
+      </div>
+      <div class="mock-body">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="mock-tr"><div class="mock-blk" style="background:${c.globalText}"></div><div class="mock-blk sm" style="background:${c.globalText}"></div></div>
+          <div class="mock-tr"><div class="mock-blk sm" style="background:${c.globalText};opacity:0.6"></div><div class="mock-blk" style="background:${c.globalText};opacity:0.35;flex:0.3"></div></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+            ${btns1}
+            ${btns2}
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+            ${cardHtml}
+            ${inputHtml}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function hB(id,pre,state){
+  const btn=document.getElementById(id);if(!btn)return;
+  const s=getBtnC(pre,state);
+  btn.style.background=s.bg;btn.style.borderColor=s.bd;btn.style.color=s.tx;
+}
+
+function toggleCardExp(){cardExp=!cardExp;renderColorList();}
+function toggleInpExp(){inpExp=!inpExp;renderColorList();}
+
+function renderColorList(){
+  const el=document.getElementById('color-list');
+
+  const mkRow=k=>`<div class="c-row" data-key="${k}" onclick="setActiveKey('${k}')">
+    <div class="row-swatch" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[k]}"></div>
+    <span class="c-lbl">${LABELS[k]||k}</span>
+    <input class="hex-in row-hex" value="${C[k]}" maxlength="9"
+      onclick="event.stopPropagation()"
+      onfocus="event.stopPropagation();setActiveKey('${k}')"
+      onchange="rowEdit('${k}',this.value)">
+  </div>`;
+
+  const mkFixed=(title,keys)=>`<div class="color-group">
+    <div class="g-title">${title}</div>
+    ${keys.map(k=>mkRow(k)).join('')}
+  </div>`;
+
+  const mkCollapsible=(title,keys,exp,fn)=>`<div class="color-group">
+    <div class="btn-group-header" onclick="${fn}()">
+      <span class="g-title" style="border-bottom:none;margin-bottom:0;padding-bottom:0">${title}</span>
+      <span class="expand-arrow ${exp?'open':''}">▾</span>
+    </div>
+    <div class="btn-detail ${exp?'open':''}">
+      ${keys.map(k=>mkRow(k)).join('')}
+    </div>
+  </div>`;
+
+  const mkBtnGroup=g=>{
+    const states=[{s:'N',label:'Normal'},{s:'H',label:'Hover'},{s:'P',label:'Pressed'}];
+    return`<div class="color-group">
+      <div class="g-title">${g.title}</div>
+      <div class="base-row" data-key="${g.baseKey}" onclick="setActiveKey('${g.baseKey}')">
+        <div class="row-swatch" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[g.baseKey]}"></div>
+        <span class="c-lbl">整組基底色</span>
+        <input class="hex-in row-hex" value="${C[g.baseKey]}" maxlength="9"
+          onclick="event.stopPropagation()"
+          onfocus="event.stopPropagation();setActiveKey('${g.baseKey}')"
+          onchange="rowEdit('${g.baseKey}',this.value)">
+      </div>
+      ${states.map(({s,label})=>{
+        const exp=g.exp[s];const bgKey=g.pre+s+'Bg';
+        return`<div style="margin-bottom:3px">
+          <div class="btn-group-header" onclick="toggleBtnExp('${g.pre}','${s}')">
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="btn-state-swatch" data-state-key="${bgKey}" style="width:16px;height:16px;border-radius:3px;border:0.5px solid #666;background:${C[bgKey]}"></div>
+              <span style="font-size:11px;color:#bbb">${label}</span>
+            </div>
+            <span class="expand-arrow ${exp?'open':''}">▾</span>
+          </div>
+          <div class="btn-detail ${exp?'open':''}">
+            ${['Bg','Bd','Tx'].map((t,i)=>{
+              const k=g.pre+s+t;
+              return`<div class="c-row" data-key="${k}" onclick="setActiveKey('${k}')">
+                <div class="row-swatch" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[k]}"></div>
+                <span class="c-lbl">${['背景','邊框','文字'][i]}</span>
+                <input class="hex-in row-hex" value="${C[k]}" maxlength="9"
+                  onclick="event.stopPropagation()"
+                  onfocus="event.stopPropagation();setActiveKey('${k}')"
+                  onchange="rowEdit('${k}',this.value)">
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  };
+
+  const mkPlaceholder=title=>`<div class="color-group"><div class="g-title" style="opacity:0.3">${title}</div></div>`;
+  el.innerHTML=[
+    mkFixed('視窗',['appBg','appText','titlebarBg','titlebarText']),
+    mkCollapsible('文字卡片',['csCardBg','csCardBd','csCardTx'],cardExp,'toggleCardExp'),
+    mkBtnGroup({title:'按鈕 1',pre:'btn1',baseKey:'b1Base',exp:btnExp1}),
+    mkFixed('卡片',['globalText','surfaceBg','surfaceBorder']),
+    opts.input?mkCollapsible('輸入框',['inpBg','inpBd','inpTx'],inpExp,'toggleInpExp'):mkPlaceholder('輸入框'),
+    opts.btn2?mkBtnGroup({title:'按鈕 2',pre:'btn2',baseKey:'b2Base',exp:btnExp2}):mkPlaceholder('按鈕 2'),
+  ].join('');
+
+  refreshRowHighlight();
+}
+
+function rowEdit(key,val){
+  const h=parseHex(val);
+  if(!h)return;
+  C[key]=h;
+  if(key==='b1Base'){applyBtnBase('btn1',h);}
+  else if(key==='b2Base'){applyBtnBase('btn2',h);}
+  if(activeKey===key){
+    document.getElementById('hex-in').value=h;
+    document.getElementById('ed-preview').style.background=h;
+    buildSliders(h);
+  }
+  syncRowSwatch(key,h);
+  renderPreview();updateExport();
+}
+
+function toggleBtnExp(pre,s){
+  const obj=pre==='btn1'?btnExp1:btnExp2;
+  obj[s]=!obj[s];
+  const headers=document.querySelectorAll('.btn-group-header');
+  headers.forEach(hdr=>{
+    const arrow=hdr.querySelector('.expand-arrow');
+    const detail=hdr.nextElementSibling;
+    if(!arrow||!detail)return;
+    const sw=hdr.querySelector('.btn-state-swatch');
+    if(!sw)return;
+    const k=sw.dataset.stateKey;
+    if(!k)return;
+    const kpre=k.startsWith('btn1')?'btn1':'btn2';
+    const ks=k.charAt(4);
+    const obj2=kpre==='btn1'?btnExp1:btnExp2;
+    const open=obj2[ks];
+    arrow.classList.toggle('open',open);
+    detail.classList.toggle('open',open);
+  });
+}
+
+function getExportContent(){
+  const keys=['appBg','appText','titlebarBg','titlebarText','globalText','surfaceBg','surfaceBorder',
+    'btn1NBg','btn1NBd','btn1NTx','btn1HBg','btn1HBd','btn1HTx','btn1PBg','btn1PBd','btn1PTx',
+    'csCardBg','csCardBd','csCardTx'];
+  if(opts.btn2)keys.push('btn2NBg','btn2NBd','btn2NTx','btn2HBg','btn2HBd','btn2HTx','btn2PBg','btn2PBd','btn2PTx');
+  if(opts.input)keys.push('inpBg','inpBd','inpTx');
+  if(exportMode==='css'){
+    return':root {\n'+keys.map(k=>`  ${CSS_NAMES[k]||('--'+k)}: ${C[k]};`).join('\n')+'\n}';
+  }else{
+    const obj={};
+    keys.forEach(k=>{
+      const parts=(JSON_NAMES[k]||k).split('.');
+      let cur=obj;
+      parts.forEach((p,i)=>{if(i===parts.length-1)cur[p]=C[k];else{cur[p]=cur[p]||{};cur=cur[p];}});
+    });
+    return JSON.stringify(obj,null,2);
+  }
+}
+
+function updateExport(){
+  if(!exportOpen)return;
+  document.getElementById('export-ta').value=getExportContent();
+}
+
+function toggleExport(){
+  exportOpen=!exportOpen;
+  const ta=document.getElementById('export-ta');
+  const btn=document.getElementById('exp-toggle-btn');
+  ta.classList.toggle('open',exportOpen);
+  btn.textContent=exportOpen?'收起':'展開';
+  if(exportOpen)ta.value=getExportContent();
+}
+
+function switchExport(m){
+  exportMode=m;
+  document.getElementById('exp-css-btn').classList.toggle('on',m==='css');
+  document.getElementById('exp-json-btn').classList.toggle('on',m==='json');
+  if(exportOpen)document.getElementById('export-ta').value=getExportContent();
+}
+
+function copyExport(){
+  const content=getExportContent();
+  navigator.clipboard.writeText(content).catch(()=>{});
+  const badge=document.getElementById('copy-badge');
+  badge.classList.add('show');
+  if(copyTimer)clearTimeout(copyTimer);
+  copyTimer=setTimeout(()=>badge.classList.remove('show'),2000);
+}
+
+function saveToSlot(){slots[activeSlot]={...C};renderStoreThumbs();}
+function loadFromSlot(){
+  if(!slots[activeSlot])return;
+  C={...slots[activeSlot]};
+  renderPreview();renderColorList();updateExport();
+  if(activeKey){
+    document.getElementById('hex-in').value=C[activeKey];
+    document.getElementById('ed-preview').style.background=C[activeKey];
+    buildSliders(C[activeKey]);
+  }
+}
+function selectSlot(i){activeSlot=i;renderStoreThumbs();}
+
+function toggleSlots(){
+  slotsExpanded=!slotsExpanded;
+  document.getElementById('slots-toggle-btn').textContent=slotsExpanded?'收起':'展開';
+  const row2=document.getElementById('slots-row2');
+  if(row2)row2.style.display=slotsExpanded?'flex':'none';
+}
+
+function renderStoreThumbs(){
+  const el=document.getElementById('store-thumbs');
+  const mkThumb=(s,i)=>`<div class="st ${activeSlot===i?'sel':''}" onclick="selectSlot(${i})">
+    <div class="st-mini" style="background:${s?s.appBg:'#333'};padding:10px">
+      <div class="st-bar" style="background:${s?s.titlebarBg:'#555'}"></div>
+      <div class="st-text-band" style="background:${s?s.globalText:'#666'}"></div>
+      <div class="st-body" style="background:${s?s.surfaceBg:'#444'}">
+        <div class="st-btn-mini" style="background:${s?s.btn1NBg:'#666'}"></div>
+        <div class="st-strip-mini" style="background:${s?s.csCardBg:'#555'};border:0.5px solid ${s?s.csCardBd:'#666'}"></div>
+      </div>
+    </div>
+    <div class="st-lbl">${s?'組合'+(i+1):'空'+(i+1)}</div>
+  </div>`;
+  el.innerHTML=`
+    <div class="slots-row">${slots.slice(0,3).map((s,i)=>mkThumb(s,i)).join('')}</div>
+    <div class="slots-row" id="slots-row2" style="display:${slotsExpanded?'flex':'none'}">${slots.slice(3,6).map((s,i)=>mkThumb(s,i+3)).join('')}</div>`;
+}
+
+renderSwatches();renderStoreThumbs();renderColorList();renderPreview();
+buildSliders(C.b1Base);setActiveKey('b1Base');
+</script>
+</body>
+</html>
