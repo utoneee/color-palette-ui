@@ -28,7 +28,10 @@ body{background:var(--app-bg);font-family:var(--font-sans);font-size:13px;color:
 .tab.on{background:#555;color:#fff;border-color:#666}
 .sl-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
 .sl-lbl{font-size:11px;width:14px;text-align:center;font-weight:500}
-.sl-val{font-size:11px;font-family:var(--font-mono);width:28px;text-align:right;color:var(--lc)}
+.sl-val{font-size:11px;font-family:var(--font-mono);width:36px;text-align:right;color:var(--lc);background:transparent;border:0.5px solid transparent;border-radius:3px;padding:1px 3px;outline:none;-moz-appearance:textfield}
+.sl-val:hover{border-color:var(--pbd)}
+.sl-val:focus{border-color:#888;background:#2a2a2a;color:#eee}
+.sl-val::-webkit-outer-spin-button,.sl-val::-webkit-inner-spin-button{-webkit-appearance:none}
 .sl-row input[type=range]{flex:1;accent-color:#888}
 .btn-sm{padding:4px 14px;font-size:11px;border:0.5px solid var(--pbd);border-radius:5px;background:transparent;color:#ccc;cursor:pointer}
 .btn-sm:hover{background:#444}
@@ -342,10 +345,24 @@ function buildSliders(hex){
     const k=rgbToCmyk(rgb.r,rgb.g,rgb.b);
     p.innerHTML=mkSl('C',k.c,100,'#06b6d4')+mkSl('M',k.m,100,'#ec4899')+mkSl('Y',k.y,100,'#eab308')+mkSl('K',k.k,100,'#aaa');
   }
-  p.querySelectorAll('input[type=range]').forEach((sl,i)=>{
+  const sliders=[...p.querySelectorAll('input[type=range]')];
+  const numInputs=[...p.querySelectorAll('.sl-val')];
+  sliders.forEach((sl,i)=>{
     sl.addEventListener('input',()=>{
-      const v=[...p.querySelectorAll('input[type=range]')].map(s=>parseInt(s.value));
-      p.querySelectorAll('.sl-val')[i].textContent=v[i];
+      const v=sliders.map(s=>parseInt(s.value));
+      numInputs[i].value=v[i];
+      const h=sliderMode==='rgb'?rgbToHex(...v):(()=>{const r=cmykToRgb(...v);return rgbToHex(r.r,r.g,r.b)})();
+      document.getElementById('hex-in').value=h;
+      applyColorFromEditor(h);
+    });
+  });
+  numInputs.forEach((inp,i)=>{
+    inp.addEventListener('change',()=>{
+      const val=parseInt(inp.value);
+      const max=parseInt(sliders[i].max);
+      if(isNaN(val)||val<0||val>max){inp.value=sliders[i].value;return;}
+      sliders[i].value=val;
+      const v=sliders.map(s=>parseInt(s.value));
       const h=sliderMode==='rgb'?rgbToHex(...v):(()=>{const r=cmykToRgb(...v);return rgbToHex(r.r,r.g,r.b)})();
       document.getElementById('hex-in').value=h;
       applyColorFromEditor(h);
@@ -353,7 +370,7 @@ function buildSliders(hex){
   });
 }
 
-function mkSl(l,v,max,col){return`<div class="sl-row"><span class="sl-lbl" style="color:${col}">${l}</span><input type="range" min="0" max="${max}" value="${v}" step="1"><span class="sl-val">${v}</span></div>`}
+function mkSl(l,v,max,col){return`<div class="sl-row"><span class="sl-lbl" style="color:${col}">${l}</span><input type="range" min="0" max="${max}" value="${v}" step="1"><input type="number" class="sl-val" min="0" max="${max}" value="${v}" step="1"></div>`}
 
 function switchSliderMode(m){
   sliderMode=m;
