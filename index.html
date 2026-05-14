@@ -95,6 +95,14 @@ body{background:var(--app-bg);font-family:var(--font-sans);font-size:13px;color:
 .app-header{padding:12px 14px 0;display:flex;align-items:center;gap:8px}
 .app-title{font-size:14px;font-weight:600;color:#e8e8e8;letter-spacing:0.03em}
 .app-subtitle{font-size:11px;color:var(--lc)}
+.sl-toggle{position:relative;display:inline-block;width:24px;height:14px;flex-shrink:0;cursor:pointer}
+.sl-toggle input{opacity:0;width:0;height:0;position:absolute}
+.sl-track{position:absolute;inset:0;background:#444;border-radius:7px;transition:background 0.2s}
+.sl-toggle input:checked~.sl-track{background:#6868a8}
+.sl-knob{position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#bbb;transition:left 0.2s;pointer-events:none}
+.sl-toggle input:checked~.sl-knob{left:12px;background:#fff}
+.row-swatch{position:relative;overflow:hidden}
+.row-swatch.crossed::after{content:'';position:absolute;inset:0;background:linear-gradient(to top right,transparent calc(50% - 1px),#999 calc(50% - 1px),#999 calc(50% + 1px),transparent calc(50% + 1px))}
 </style>
 </head>
 <body>
@@ -264,6 +272,7 @@ let btnExp2={N:false,H:false,P:false};
 let copyTimer=null;
 let cardExp=true;
 let inpExp=true;
+let disabledKeys=new Set();
 
 function hexToRgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return{r:(n>>16)&255,g:(n>>8)&255,b:n&255}}
 function rgbToHex(r,g,b){return'#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('').toUpperCase()}
@@ -480,14 +489,22 @@ function hB(id,pre,state){
   btn.style.background=s.bg;btn.style.borderColor=s.bd;btn.style.color=s.tx;
 }
 
+function toggleKey(k,el){
+  if(disabledKeys.has(k))disabledKeys.delete(k);else disabledKeys.add(k);
+  const row=el.closest('.c-row,.base-row');
+  if(row)row.querySelector('.row-swatch').classList.toggle('crossed',disabledKeys.has(k));
+  updateExport();
+}
 function toggleCardExp(){cardExp=!cardExp;renderColorList();}
 function toggleInpExp(){inpExp=!inpExp;renderColorList();}
 
 function renderColorList(){
   const el=document.getElementById('color-list');
 
+  const mkToggle=k=>`<label class="sl-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${disabledKeys.has(k)?'':'checked'} onchange="toggleKey('${k}',this)"><span class="sl-track"></span><span class="sl-knob"></span></label>`;
   const mkRow=k=>`<div class="c-row" data-key="${k}" onclick="setActiveKey('${k}')">
-    <div class="row-swatch" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[k]}"></div>
+    ${mkToggle(k)}
+    <div class="row-swatch ${disabledKeys.has(k)?'crossed':''}" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[k]}"></div>
     <span class="c-lbl">${LABELS[k]||k}</span>
     <input class="hex-in row-hex" value="${C[k]}" maxlength="9"
       onclick="event.stopPropagation()"
@@ -515,7 +532,8 @@ function renderColorList(){
     return`<div class="color-group">
       <div class="g-title">${g.title}</div>
       <div class="base-row" data-key="${g.baseKey}" onclick="setActiveKey('${g.baseKey}')">
-        <div class="row-swatch" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[g.baseKey]}"></div>
+        ${mkToggle(g.baseKey)}
+        <div class="row-swatch ${disabledKeys.has(g.baseKey)?'crossed':''}" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[g.baseKey]}"></div>
         <span class="c-lbl">整組基底色</span>
         <input class="hex-in row-hex" value="${C[g.baseKey]}" maxlength="9"
           onclick="event.stopPropagation()"
@@ -536,7 +554,8 @@ function renderColorList(){
             ${['Bg','Bd','Tx'].map((t,i)=>{
               const k=g.pre+s+t;
               return`<div class="c-row" data-key="${k}" onclick="setActiveKey('${k}')">
-                <div class="row-swatch" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[k]}"></div>
+                ${mkToggle(k)}
+                <div class="row-swatch ${disabledKeys.has(k)?'crossed':''}" style="width:24px;height:24px;border-radius:5px;border:2px solid #777;flex-shrink:0;background:${C[k]}"></div>
                 <span class="c-lbl">${['背景','邊框','文字'][i]}</span>
                 <input class="hex-in row-hex" value="${C[k]}" maxlength="9"
                   onclick="event.stopPropagation()"
@@ -605,11 +624,12 @@ function getExportContent(){
     'csCardBg','csCardBd','csCardTx'];
   if(opts.btn2)keys.push('btn2NBg','btn2NBd','btn2NTx','btn2HBg','btn2HBd','btn2HTx','btn2PBg','btn2PBd','btn2PTx');
   if(opts.input)keys.push('inpBg','inpBd','inpTx');
+  const activeKeys=keys.filter(k=>!disabledKeys.has(k));
   if(exportMode==='css'){
-    return':root {\n'+keys.map(k=>`  ${CSS_NAMES[k]||('--'+k)}: ${C[k]};`).join('\n')+'\n}';
+    return':root {\n'+activeKeys.map(k=>`  ${CSS_NAMES[k]||('--'+k)}: ${C[k]};`).join('\n')+'\n}';
   }else{
     const obj={};
-    keys.forEach(k=>{
+    activeKeys.forEach(k=>{
       const parts=(JSON_NAMES[k]||k).split('.');
       let cur=obj;
       parts.forEach((p,i)=>{if(i===parts.length-1)cur[p]=C[k];else{cur[p]=cur[p]||{};cur=cur[p];}});
